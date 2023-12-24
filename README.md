@@ -1,4 +1,4 @@
-This is an experimental plugin.
+This is an experimental plugin that tries to dig up ghost/weapons eaten by the floor.
 
 
 ## Build requirements
