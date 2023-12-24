@@ -1,0 +1,35 @@
+"Games"
+{
+	"NeotokyoSource"
+	{
+		"Signatures"
+		{
+			"Sig_CEngineTrace__GetPointContents"
+			{
+				"library"	"engine"
+				"windows"	"\x83\xEC\x1C\x53\x55\x56\x57\x8B\x7C\x24\x30"
+			}
+		}
+		"Functions"
+		{
+			"Fun_CEngineTrace__GetPointContents"
+			{
+				"signature"		"Sig_CEngineTrace__GetPointContents"
+				"callconv"		"thiscall"
+				"this"			"ignore"
+				"return"		"int"
+				"arguments"
+				{
+					"vecAbsPosition"
+					{
+						"type"	"vectorptr"
+					}
+					"ppEntity"
+					{
+						"type"	"objectptr"
+					}
+				}
+			}
+		}
+	}
+}
