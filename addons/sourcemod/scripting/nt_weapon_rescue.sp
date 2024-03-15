@@ -6,11 +6,10 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.1.0"
+#define PLUGIN_VERSION "0.1.1"
 
 
-bool _late;
-bool _is_dropping_wep;
+bool _late, _is_dropping_wep;
 int _weapon = INVALID_ENT_REFERENCE;
 
 public Plugin myinfo = {
@@ -48,8 +47,7 @@ public void OnAllPluginsLoaded()
 
 	if (_late)
 	{
-		int i = 1;
-		for (; i <= MaxClients; ++i)
+		for (int i = 1; i <= MaxClients; ++i)
 		{
 			if (IsClientInGame(i))
 			{
@@ -99,46 +97,59 @@ public MRESReturn GetPointContents(DHookReturn hReturn, DHookParam hParams)
 		return MRES_Ignored;
 	}
 
-	float pos[3];
-	hParams.GetVector(1, pos);
-
-	int failsafe;
-	while (TR_PointOutsideWorld(pos))
-	{
-		pos[2] += 100.0;
-		if (failsafe++ > 2)
-		{
-			return MRES_Ignored;
-		}
-	}
-
-	// This function will also write to origin, so gotta delay this.
-	DeferTeleportEntity(_weapon, pos);
+	RequestFrame(DeferredTeleport, _weapon);
 
 	return MRES_Ignored;
 }
 
-void DeferTeleportEntity(int weapon_ref, const float pos[3])
+void DeferredTeleport(int base_ent_ref)
 {
-	DataPack data;
-	CreateDataTimer(0.2, Timer_DeferTeleportEnt, data,
-		TIMER_FLAG_NO_MAPCHANGE);
-	data.WriteCell(weapon_ref);
-	data.WriteFloatArray(pos, 3);
-}
-
-public Action Timer_DeferTeleportEnt(Handle timer, DataPack data)
-{
-	data.Reset();
-	int weapon = data.ReadCell();
-	if (IsValidEdict(weapon))
+	if (!IsValidEntity(base_ent_ref))
 	{
-		float pos[3];
-		data.ReadFloatArray(pos, sizeof(pos));
-		float vel[3] = { 0.0, 0.0, 4.0 };
-		TeleportEntity(weapon, pos, NULL_VECTOR, vel);
+		return;
 	}
-	return Plugin_Stop;
+
+	float mins[3], maxs[3], pos[3];
+	GetEntPropVector(base_ent_ref, Prop_Send, "m_vecMins", mins);
+	GetEntPropVector(base_ent_ref, Prop_Send, "m_vecMaxs", maxs);
+	GetEntPropVector(base_ent_ref, Prop_Send, "m_vecOrigin", pos);
+
+// Bump a lot initially, to avoid weird nooks and crannies right below the floor
+#define BUMP_MULTIPLIER 3.0
+	pos[2] += BUMP_MULTIPLIER * (maxs[2] - mins[2]);
+
+#define MAX_TRIES 66 // avoid infinite loop
+	float tmp[3];
+	for (int i = 0; i < MAX_TRIES; ++i)
+	{
+		// Origin out of bounds?
+		if (TR_GetPointContents(pos) & CONTENTS_SOLID)
+		{
+			continue;
+		}
+
+		// Mins out of bounds?
+		AddVectors(pos, mins, tmp);
+		if (TR_GetPointContents(tmp) & CONTENTS_SOLID)
+		{
+			continue;
+		}
+
+		// Maxs out of bounds?
+		AddVectors(pos, maxs, tmp);
+		if (TR_GetPointContents(tmp) & CONTENTS_SOLID)
+		{
+			continue;
+		}
+
+		// Bump up the entire height of the object, and then some.
+		pos[2] += maxs[2] - mins[2] + 1.0;
+
+		break; // found good position
+	}
+
+	float zeroed[3]; // kill any momentum for the rescue
+	TeleportEntity(base_ent_ref, pos, NULL_VECTOR, zeroed);
 }
 
 void HookWeaponDrop(int client)
