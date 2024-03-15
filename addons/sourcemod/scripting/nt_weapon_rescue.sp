@@ -33,7 +33,9 @@ public void OnAllPluginsLoaded()
 	{
 		SetFailState("Failed to load GameData");
 	}
-	DynamicDetour dd = DynamicDetour.FromConf(gd, "Fun_CEngineTrace__GetPointContents");
+
+	DynamicDetour dd = DynamicDetour.FromConf(gd,
+		"Fun_CEngineTrace__GetPointContents");
 	if (!dd)
 	{
 		SetFailState("Failed to create dynamic detour");
@@ -77,10 +79,11 @@ public void OnClientPutInServer(int client)
 	HookWeaponDrop(client);
 }
 
-public void OnWeaponDrop(int client, int weapon)
+public Action OnWeaponDrop(int client, int weapon)
 {
 	_weapon = EntIndexToEntRef(weapon);
 	_is_dropping_wep = true;
+	return Plugin_Continue;
 }
 
 public MRESReturn GetPointContents(DHookReturn hReturn, DHookParam hParams)
@@ -114,14 +117,22 @@ void DeferredTeleport(int base_ent_ref)
 	GetEntPropVector(base_ent_ref, Prop_Send, "m_vecMaxs", maxs);
 	GetEntPropVector(base_ent_ref, Prop_Send, "m_vecOrigin", pos);
 
-// Bump a lot initially, to avoid weird nooks and crannies right below the floor
-#define BUMP_MULTIPLIER 3.0
-	pos[2] += BUMP_MULTIPLIER * (maxs[2] - mins[2]);
-
 #define MAX_TRIES 66 // avoid infinite loop
 	float tmp[3];
-	for (int i = 0; i < MAX_TRIES; ++i)
+	for (int i = 0; i <= MAX_TRIES; ++i)
 	{
+		if (i == 1)
+		{
+			// Bump a lot initially, to avoid weird nooks and crannies
+			// right below the floor.
+			pos[2] += 3.0 * (maxs[2] - mins[2]) + 1.0;
+		}
+		// Don't bump on initial run, in case we actually do have a good pos
+		else if (i != 0)
+		{
+			pos[2] += maxs[2] - mins[2] + 1.0;
+		}
+
 		// Origin out of bounds?
 		if (TR_GetPointContents(pos) & CONTENTS_SOLID)
 		{
@@ -141,9 +152,6 @@ void DeferredTeleport(int base_ent_ref)
 		{
 			continue;
 		}
-
-		// Bump up the entire height of the object, and then some.
-		pos[2] += maxs[2] - mins[2] + 1.0;
 
 		break; // found good position
 	}
