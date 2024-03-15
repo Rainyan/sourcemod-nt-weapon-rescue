@@ -153,11 +153,32 @@ void DeferredTeleport(int base_ent_ref)
 			continue;
 		}
 
+		float dir[3] = { -90.0, 0.0, 0.0 };
+		TR_TraceRayFilter(pos, dir, MASK_ALL, RayType_Infinite, FilterEdicts);
+		if (TR_DidHit() && TR_GetDisplacementFlags() != 0)
+		{
+			PrintToServer("Found displacements above me!");
+			TR_GetEndPosition(pos);
+			continue;
+		}
+		PrintToServer("Did hit: %d", TR_DidHit());
+		PrintToServer("TR_GetDisplacementFlags: %d", TR_GetDisplacementFlags());
+		PrintToServer("TR_GetSurfaceProps: %d", TR_GetSurfaceProps());
+
 		break; // found good position
 	}
 
 	float zeroed[3]; // kill any momentum for the rescue
 	TeleportEntity(base_ent_ref, pos, NULL_VECTOR, zeroed);
+}
+
+bool FilterEdicts(int hit, int contentsMask)
+{
+	if (hit > 0 && hit < GetMaxEntities())
+	{
+		return false;
+	}
+	return true;
 }
 
 void HookWeaponDrop(int client)
