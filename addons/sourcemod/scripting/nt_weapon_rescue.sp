@@ -6,7 +6,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.1.2"
+#define PLUGIN_VERSION "0.1.3"
 
 
 bool _late, _is_dropping_wep;
@@ -156,8 +156,14 @@ void DeferredTeleport(int base_ent_ref)
 		break; // found good position
 	}
 
-	float zeroed[3]; // kill any momentum for the rescue
-	TeleportEntity(base_ent_ref, pos, NULL_VECTOR, zeroed);
+	// Must define, because the default of NULL_VECTOR means "don't change".
+	// We must zero the angles so the bbox mins/maxs checks hold true
+	// without needing to do any transformations here.
+	// And also we zero the momentum to avoid guns flying in weird directions
+	// (although potentially we might wanna save momentum from things like
+	// explosions etc?)
+	float zero[3];
+	TeleportEntity(base_ent_ref, pos, zero, zero);
 }
 
 void HookWeaponDrop(int client)
